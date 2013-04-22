@@ -1087,7 +1087,7 @@ public class UMLSequenceChart extends UMLChart {
 	 * @see org.eclipse.zest.custom.sequence.widgets.UMLChart#markDirty()
 	 */
 	@Override
-	protected void markDirty() {
+	public void markDirty() {
 		super.markDirty();
 		refresh();
 	}

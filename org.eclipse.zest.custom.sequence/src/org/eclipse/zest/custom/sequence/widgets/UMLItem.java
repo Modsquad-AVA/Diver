@@ -197,6 +197,7 @@ public abstract class UMLItem extends Item implements Comparable<UMLItem> {
 		String old = getText();
 		super.setText(string);
 		firePropertyChange(IWidgetProperties.TEXT, old, string);
+		chart.markDirty();
 	}
 	
 	/* (non-Javadoc)

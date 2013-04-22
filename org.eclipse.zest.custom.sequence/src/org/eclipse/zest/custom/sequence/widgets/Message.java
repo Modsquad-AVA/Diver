@@ -169,7 +169,8 @@ public class Message extends UMLTextColoredItem {
 	 */
 	public void setSourceStyle(int style) {
 		checkWidget();
-		int clearMask = style & FILL_MASK;
+		//int clearMask = style & FILL_MASK;
+		int clearMask = (style | FILL_MASK) ^ FILL_MASK;
 		switch (clearMask) {
 		case NONE:
 		case OPEN_ARROW:
