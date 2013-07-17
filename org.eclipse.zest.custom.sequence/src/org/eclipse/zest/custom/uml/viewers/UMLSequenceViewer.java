@@ -750,172 +750,174 @@ public class UMLSequenceViewer extends StructuredViewer {
 			
 			//update the messages
 			Message[] oldMessages = a.getMessages();
-			Object[] filteredMessages = filter(provider.getMessages(a.getData()));
-			//run through a filtering to make sure that the targets of the messages will be visible as well
-			List<Object> filteredMessageList = new LinkedList<Object>();
-			for (Object m : filteredMessages) {
-				if (selectActivation(provider.getTarget(m))) {
-					filteredMessageList.add(m);
+			if(a != null){
+				Object[] filteredMessages = filter(provider.getMessages(a.getData()));
+				//run through a filtering to make sure that the targets of the messages will be visible as well
+				List<Object> filteredMessageList = new LinkedList<Object>();
+				for (Object m : filteredMessages) {
+					if (selectActivation(provider.getTarget(m))) {
+						filteredMessageList.add(m);
+					}
 				}
-			}
-			Object[] newMessageElements = filteredMessageList.toArray();
-			ArrayList<Message> newMessages = new ArrayList<Message>();
-			newMessages.addAll(Arrays.asList(oldMessages));
-			HashSet<Object> mappedElements = new HashSet<Object>();
-			LinkedList<Activation> activationsToLoad = new LinkedList<Activation>();
-			for (Message m : newMessages) {
-				if (!m.isDisposed()) {
-					mappedElements.add(m.getData());
+				Object[] newMessageElements = filteredMessageList.toArray();
+				ArrayList<Message> newMessages = new ArrayList<Message>();
+				newMessages.addAll(Arrays.asList(oldMessages));
+				HashSet<Object> mappedElements = new HashSet<Object>();
+				LinkedList<Activation> activationsToLoad = new LinkedList<Activation>();
+				for (Message m : newMessages) {
+					if (!m.isDisposed()) {
+						mappedElements.add(m.getData());
+					}
 				}
-			}
-			int i = 0;
-			for (; i < newMessageElements.length; i++) {
-				Object messageElement = newMessageElements[i];
-				Object target = provider.getTarget(messageElement);
-				Message oldMessage = null;
-				if (mappedElements.contains(messageElement)) {
-					for (int j = i; j < oldMessages.length; j++) {
-						Message temp = newMessages.get(j);
-						if (!temp.isDisposed()) {
-							if (temp.getData().equals(messageElement)) {
-								if (i != j) {
-									//swap the messages to put them in order.
-									Message replacement = newMessages.get(i);
-									newMessages.set(i, temp);
-									newMessages.set(j, replacement);
+				int i = 0;
+				for (; i < newMessageElements.length; i++) {
+					Object messageElement = newMessageElements[i];
+					Object target = provider.getTarget(messageElement);
+					Message oldMessage = null;
+					if (mappedElements.contains(messageElement)) {
+						for (int j = i; j < oldMessages.length; j++) {
+							Message temp = newMessages.get(j);
+							if (!temp.isDisposed()) {
+								if (temp.getData().equals(messageElement)) {
+									if (i != j) {
+										//swap the messages to put them in order.
+										Message replacement = newMessages.get(i);
+										newMessages.set(i, temp);
+										newMessages.set(j, replacement);
+									}
+									oldMessage = temp;
+									break;
 								}
-								oldMessage = temp;
-								break;
 							}
 						}
 					}
-				}
-				Message newMessage = null;
-				Activation newTarget = null;
-				if (oldMessage != null) {
-					newMessage = oldMessage;
-					if (provider.isCall(messageElement)) {
-						if (!(oldMessage instanceof Call)) {
+					Message newMessage = null;
+					Activation newTarget = null;
+					if (oldMessage != null) {
+						newMessage = oldMessage;
+						if (provider.isCall(messageElement)) {
+							if (!(oldMessage instanceof Call)) {
+								//remove this message from the current list and throw it
+								//at the end as trash.
+								newMessages.remove(i);
+								newMessages.add(oldMessage);
+								newMessage = null;
+							}
+						} else if (!(oldMessage instanceof Return)) {
 							//remove this message from the current list and throw it
 							//at the end as trash.
 							newMessages.remove(i);
 							newMessages.add(oldMessage);
 							newMessage = null;
 						}
-					} else if (!(oldMessage instanceof Return)) {
-						//remove this message from the current list and throw it
-						//at the end as trash.
-						newMessages.remove(i);
-						newMessages.add(oldMessage);
-						newMessage = null;
-					}
-					if (newMessage != null) {
-						Activation oldTarget = newMessage.getTarget();
-						if (oldTarget != null && !oldTarget.isDisposed()) {
-							if (oldTarget.getData().equals(target)) {
-								newTarget = oldTarget;
-							} else {
-								deleteSubTree(oldTarget);
-							}
-						}
-					}
-
-				}
-				if (newMessage == null) {
-					//have to create a new message.
-					if (provider.isCall(messageElement)) {
-						newMessage = new Call(getChart());
-					} else {
-						newMessage = new Return(getChart());
-					}
-					updateItem(newMessage, messageElement);
-					if (i == newMessages.size()) {
-						newMessages.add(newMessage);
-					} else {
-						newMessages.add(i, newMessage);
-					}
-				}
-				if (newTarget == null) {
-					if (newMessage instanceof Return) {
-						//try and use the fastest ways to get a match.
-						//first, check the immediate parent.
-						if (a.getSourceCall() != null && target.equals(a.getSourceCall().getSource().getData())) {
-							//found a match, no need to continue.
-							newTarget = a.getSourceCall().getSource();
-						} else 	{
-							if (usingElementMap()) {
-								//otherwise, check the map for a single match
-								Widget[] widgets = findItems(target);
-								if (widgets.length == 1 && widgets[0] instanceof Activation) {
-									newTarget = (Activation)widgets[0];
+						if (newMessage != null) {
+							Activation oldTarget = newMessage.getTarget();
+							if (oldTarget != null && !oldTarget.isDisposed()) {
+								if (oldTarget.getData().equals(target)) {
+									newTarget = oldTarget;
+								} else {
+									deleteSubTree(oldTarget);
 								}
 							}
-							if (newTarget == null) {
-								//finally, try and find a previous match on the call stack.
-								Iterator<Activation> stackIterator = callStack.iterator();
-								while (stackIterator.hasNext()) {
-									Activation parent = stackIterator.next();
-									if (parent.getData().equals(target)) {
-										if (parent != a) {
-											newTarget = parent;
+						}
+	
+					}
+					if (newMessage == null) {
+						//have to create a new message.
+						if (provider.isCall(messageElement)) {
+							newMessage = new Call(getChart());
+						} else {
+							newMessage = new Return(getChart());
+						}
+						updateItem(newMessage, messageElement);
+						if (i == newMessages.size()) {
+							newMessages.add(newMessage);
+						} else {
+							newMessages.add(i, newMessage);
+						}
+					}
+					if (newTarget == null) {
+						if (newMessage instanceof Return) {
+							//try and use the fastest ways to get a match.
+							//first, check the immediate parent.
+							if (a.getSourceCall() != null && target.equals(a.getSourceCall().getSource().getData())) {
+								//found a match, no need to continue.
+								newTarget = a.getSourceCall().getSource();
+							} else 	{
+								if (usingElementMap()) {
+									//otherwise, check the map for a single match
+									Widget[] widgets = findItems(target);
+									if (widgets.length == 1 && widgets[0] instanceof Activation) {
+										newTarget = (Activation)widgets[0];
+									}
+								}
+								if (newTarget == null) {
+									//finally, try and find a previous match on the call stack.
+									Iterator<Activation> stackIterator = callStack.iterator();
+									while (stackIterator.hasNext()) {
+										Activation parent = stackIterator.next();
+										if (parent.getData().equals(target)) {
+											if (parent != a) {
+												newTarget = parent;
+											}
+											break;
 										}
-										break;
 									}
 								}
 							}
+						} else {
+							//create a new target to call.
+							newTarget = new Activation(getChart());
+							updateItem(newTarget, target);
+							if (!isLazyLoading()) {
+								activationsToLoad.add(newTarget);
+							}
 						}
-					} else {
-						//create a new target to call.
-						newTarget = new Activation(getChart());
-						updateItem(newTarget, target);
-						if (!isLazyLoading()) {
-							activationsToLoad.add(newTarget);
+					}
+					if (newTarget != null) {
+						//make sure that the lifeline is correct.
+	//					if (newTarget.getLifeline() == null) {
+	//						Object lifelineElement = provider.getLifeline(target);
+	//						Lifeline lifeline = (Lifeline) findItem(lifelineElement);
+	//						if (lifeline == null) {
+	//							lifeline = new Lifeline(getChart());
+	//							updateItem(lifeline, lifelineElement);
+	//						}
+	//						newTarget.setLifeline(lifeline);
+	//					}
+						internalRefreashActivationLifeline(newTarget);
+					}
+					if (newMessage != null && newTarget != null) {
+						if (!newMessage.isDisposed() && !newTarget.isDisposed()) {
+							a.addMessage(i, newMessage, newTarget);
 						}
 					}
+					
 				}
-				if (newTarget != null) {
-					//make sure that the lifeline is correct.
-//					if (newTarget.getLifeline() == null) {
-//						Object lifelineElement = provider.getLifeline(target);
-//						Lifeline lifeline = (Lifeline) findItem(lifelineElement);
-//						if (lifeline == null) {
-//							lifeline = new Lifeline(getChart());
-//							updateItem(lifeline, lifelineElement);
-//						}
-//						newTarget.setLifeline(lifeline);
-//					}
-					internalRefreashActivationLifeline(newTarget);
+				if (a.isDisposed()) {
+					System.out.println("disposed here");
 				}
-				if (newMessage != null && newTarget != null) {
-					if (!newMessage.isDisposed() && !newTarget.isDisposed()) {
-						a.addMessage(i, newMessage, newTarget);
+				//remove the trash
+				for (; i < newMessages.size(); i++) {
+					Message m = newMessages.get(i);
+					if (!m.isDisposed()) {
+						if (m instanceof Call) {
+							deleteSubTree(m.getTarget());
+						}
+						m.dispose();
 					}
 				}
-				
-			}
-			if (a.isDisposed()) {
-				System.out.println("disposed here");
-			}
-			//remove the trash
-			for (; i < newMessages.size(); i++) {
-				Message m = newMessages.get(i);
-				if (!m.isDisposed()) {
-					if (m instanceof Call) {
-						deleteSubTree(m.getTarget());
+				if (a.isDisposed()) {
+					System.out.println("disposed here!");
+				}
+				refreshGroups(a);
+				if (activationsToLoad.size() > 0) {
+					callStack.addFirst(a);
+					while (activationsToLoad.size() > 0) {
+						internalRefreshActivation(activationsToLoad.removeFirst(), callStack);
 					}
-					m.dispose();
+					callStack.removeFirst();
 				}
-			}
-			if (a.isDisposed()) {
-				System.out.println("disposed here!");
-			}
-			refreshGroups(a);
-			if (activationsToLoad.size() > 0) {
-				callStack.addFirst(a);
-				while (activationsToLoad.size() > 0) {
-					internalRefreshActivation(activationsToLoad.removeFirst(), callStack);
-				}
-				callStack.removeFirst();
 			}
 		} finally {
 			getChart().setRedraw(true);
@@ -970,46 +972,48 @@ public class UMLSequenceViewer extends StructuredViewer {
 		ISequenceChartContentProvider provider = (ISequenceChartContentProvider) getContentProvider();
 		
 		//update the lifeline
-		Object llElement = provider.getLifeline(a.getData());
-		
-		//make sure that the lifeline should be shown.
-		if (!select(llElement)) {
-			//delete this subtree, and all of the subtrees on the lifeline
-			Widget w = findItem(llElement);
-			//deleting all of the subtrees on the lifeline will result
-			//in the deletion of the lifeline itself.
-			if (!a.isDisposed()) {
-				deleteSubTree(a);
-			}
-			if (w instanceof Lifeline && !w.isDisposed()) {
-				Lifeline ll = (Lifeline) w;
-				for (Activation a2 : ll.getAllActivations()) {
-					if (!a2.isDisposed()) {
-						deleteSubTree(a2);
+		if(a != null && provider != null){
+			Object llElement = provider.getLifeline(a.getData());
+			
+			//make sure that the lifeline should be shown.
+			if (!select(llElement)) {
+				//delete this subtree, and all of the subtrees on the lifeline
+				Widget w = findItem(llElement);
+				//deleting all of the subtrees on the lifeline will result
+				//in the deletion of the lifeline itself.
+				if (!a.isDisposed()) {
+					deleteSubTree(a);
+				}
+				if (w instanceof Lifeline && !w.isDisposed()) {
+					Lifeline ll = (Lifeline) w;
+					for (Activation a2 : ll.getAllActivations()) {
+						if (!a2.isDisposed()) {
+							deleteSubTree(a2);
+						}
 					}
 				}
+				return;
 			}
-			return;
-		}
-		Lifeline ll = (Lifeline) findItem(llElement);
-		if (ll == null) {
-			ll = new Lifeline(getChart());
-			updateItem(ll, llElement);
-		}
-		if (a.getLifeline() != ll) {
-			if (a.getLifeline() != null) {
-				a.setLifeline(null);
-				if (ll.getAllActivations().length == 0) {
-					//dispose the lifeline
-					disassociate(a.getLifeline());
-					a.getLifeline().dispose();
+			Lifeline ll = (Lifeline) findItem(llElement);
+			if (ll == null) {
+				ll = new Lifeline(getChart());
+				updateItem(ll, llElement);
+			}
+			if (a.getLifeline() != ll) {
+				if (a.getLifeline() != null) {
+					a.setLifeline(null);
+					if (ll.getAllActivations().length == 0) {
+						//dispose the lifeline
+						disassociate(a.getLifeline());
+						a.getLifeline().dispose();
+					}
 				}
+	
+				a.setLifeline(ll);
 			}
-
-			a.setLifeline(ll);
-		}
-		if (provider instanceof ISequenceContentExtension) {
-			internalRefreshLifelineGroup(a.getLifeline());
+			if (provider instanceof ISequenceContentExtension) {
+				internalRefreshLifelineGroup(a.getLifeline());
+			}
 		}
 	}
 
